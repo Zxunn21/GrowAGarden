@@ -12,7 +12,65 @@ local SellEvent = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("Hal
 local BuySeedEvent = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("BuyEventShopStock")
 local DeleteObjectEvent = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("DeleteObject")
 local CollectEvent = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("Crops"):WaitForChild("Collect")
-local Plants = workspace.Farm.Farm.Important.Plants_Physical
+-- Cari farm milik LocalPlayer berdasarkan username pada Important/Data/Owner.
+-- Struktur asli tetap dipakai: workspace.Farm berisi container farm,
+-- dan setiap container farm memiliki Important.
+local FarmRoot = workspace:WaitForChild("Farm")
+
+local function OwnerMatchesLocalPlayer(Owner)
+    if not Owner then
+        return false
+    end
+
+    local OwnerUsername = tostring(Owner.Value)
+    local MyUsername = Player.Name
+
+    -- Owner sekarang dicocokkan menggunakan username Roblox, bukan UserId.
+    -- Dibuat case-insensitive agar perbedaan kapitalisasi tidak menggagalkan pencocokan.
+    return string.lower(OwnerUsername) == string.lower(MyUsername)
+end
+
+local function FindOwnPlants()
+    -- Prioritaskan CHILD langsung FarmRoot agar tidak salah mengambil
+    -- Important/Data milik object lain yang kebetulan berada lebih dalam.
+    for _, FarmContainer in ipairs(FarmRoot:GetChildren()) do
+        local Important = FarmContainer:FindFirstChild("Important")
+        local Data = Important and Important:FindFirstChild("Data")
+        local Owner = Data and Data:FindFirstChild("Owner")
+        local PlantsPhysical = Important and Important:FindFirstChild("Plants_Physical")
+
+        if OwnerMatchesLocalPlayer(Owner) and PlantsPhysical then
+            return PlantsPhysical
+        end
+    end
+
+    -- Fallback untuk kemungkinan ada satu lapisan folder tambahan.
+    for _, FarmContainer in ipairs(FarmRoot:GetDescendants()) do
+        local Important = FarmContainer:FindFirstChild("Important")
+        if Important then
+            local Data = Important:FindFirstChild("Data")
+            local Owner = Data and Data:FindFirstChild("Owner")
+            local PlantsPhysical = Important:FindFirstChild("Plants_Physical")
+
+            if OwnerMatchesLocalPlayer(Owner) and PlantsPhysical then
+                return PlantsPhysical
+            end
+        end
+    end
+
+    return nil
+end
+
+-- Pertahankan variabel Plants karena bagian lain pada script asli menggunakannya.
+local Plants = FindOwnPlants()
+
+local function GetOwnPlants()
+    local Current = FindOwnPlants()
+    if Current then
+        Plants = Current
+    end
+    return Current
+end
 
 local function GetTrowel()
     for _, Object in ipairs(Player.Backpack:GetChildren()) do
@@ -684,7 +742,13 @@ local function FindPlants(Query)
     Query = string.lower(Query)
 
     local Results = {}
-    local Children = Plants:GetChildren()
+    local CurrentPlants = GetOwnPlants()
+
+    if not CurrentPlants then
+        return Results
+    end
+
+    local Children = CurrentPlants:GetChildren()
 
     for Index, Plant in ipairs(Children) do
         local Name = string.lower(Plant.Name)
@@ -1094,8 +1158,14 @@ local HarvestLoopToken = 0
 local function HarvestOnce()
     local FruitContainers = 0
     local Targets = {}
+    local OwnPlants = GetOwnPlants()
 
-    for _, Plant in ipairs(Plants:GetChildren()) do
+    if not OwnPlants then
+        HarvestStatus.Text = "Farm sendiri belum ditemukan"
+        return 0
+    end
+
+    for _, Plant in ipairs(OwnPlants:GetChildren()) do
         local Fruits = Plant:FindFirstChild("Fruits")
 
         if Fruits then
