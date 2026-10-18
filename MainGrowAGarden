@@ -1,0 +1,378 @@
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Player = Players.LocalPlayer
+local PlayerGui = Player:WaitForChild("PlayerGui")
+local Event = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("TrowelRemote")
+local Plants = workspace.Farm.Farm.Important.Plants_Physical
+
+local function GetTrowel()
+    for _, Object in ipairs(Player.Backpack:GetChildren()) do
+        if Object:IsA("Tool") and string.find(string.lower(Object.Name), "trowel", 1, true) then
+            return Object
+        end
+    end
+
+    local Character = Player.Character
+
+    if Character then
+        for _, Object in ipairs(Character:GetChildren()) do
+            if Object:IsA("Tool") and string.find(string.lower(Object.Name), "trowel", 1, true) then
+                return Object
+            end
+        end
+    end
+
+    return nil
+end
+
+local function DisablePlantCollision(Plant)
+    if not Plant then
+        return
+    end
+
+    if Plant:IsA("BasePart") then
+        Plant.CanCollide = false
+        Plant.CanTouch = false
+        Plant.CanQuery = false
+    end
+
+    for _, Object in ipairs(Plant:GetDescendants()) do
+        if Object:IsA("BasePart") then
+            Object.CanCollide = false
+            Object.CanTouch = false
+            Object.CanQuery = false
+        end
+    end
+end
+
+local OldGui = PlayerGui:FindFirstChild("TrowelMoverGUI")
+
+if OldGui then
+    OldGui:Destroy()
+end
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "TrowelMoverGUI"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = PlayerGui
+
+local Main = Instance.new("Frame")
+Main.Size = UDim2.new(0, 390, 0, 150)
+Main.Position = UDim2.new(0.5, -195, 0.5, -75)
+Main.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+Main.BorderSizePixel = 0
+Main.Active = true
+Main.Draggable = true
+Main.Parent = ScreenGui
+
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 9)
+MainCorner.Parent = Main
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, -82, 0, 30)
+Title.Position = UDim2.new(0, 10, 0, 0)
+Title.BackgroundTransparency = 1
+Title.Text = "GAG"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 13
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Parent = Main
+
+local Minimize = Instance.new("TextButton")
+Minimize.Size = UDim2.new(0, 27, 0, 22)
+Minimize.Position = UDim2.new(1, -61, 0, 4)
+Minimize.BackgroundColor3 = Color3.fromRGB(55, 55, 65)
+Minimize.Text = "—"
+Minimize.TextColor3 = Color3.fromRGB(255, 255, 255)
+Minimize.Font = Enum.Font.GothamBold
+Minimize.TextSize = 13
+Minimize.Parent = Main
+
+local MinCorner = Instance.new("UICorner")
+MinCorner.CornerRadius = UDim.new(0, 5)
+MinCorner.Parent = Minimize
+
+local Close = Instance.new("TextButton")
+Close.Size = UDim2.new(0, 27, 0, 22)
+Close.Position = UDim2.new(1, -31, 0, 4)
+Close.BackgroundColor3 = Color3.fromRGB(190, 60, 60)
+Close.Text = "X"
+Close.TextColor3 = Color3.fromRGB(255, 255, 255)
+Close.Font = Enum.Font.GothamBold
+Close.TextSize = 11
+Close.Parent = Main
+
+local CloseCorner = Instance.new("UICorner")
+CloseCorner.CornerRadius = UDim.new(0, 5)
+CloseCorner.Parent = Close
+
+local Scroll = Instance.new("ScrollingFrame")
+Scroll.Size = UDim2.new(1, -12, 1, -38)
+Scroll.Position = UDim2.new(0, 6, 0, 32)
+Scroll.BackgroundTransparency = 1
+Scroll.BorderSizePixel = 0
+Scroll.ScrollBarThickness = 3
+Scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+Scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+Scroll.ScrollingDirection = Enum.ScrollingDirection.Y
+Scroll.Parent = Main
+
+local List = Instance.new("UIListLayout")
+List.Padding = UDim.new(0, 5)
+List.SortOrder = Enum.SortOrder.LayoutOrder
+List.Parent = Scroll
+
+local Padding = Instance.new("UIPadding")
+Padding.PaddingTop = UDim.new(0, 3)
+Padding.PaddingBottom = UDim.new(0, 3)
+Padding.PaddingLeft = UDim.new(0, 3)
+Padding.PaddingRight = UDim.new(0, 3)
+Padding.Parent = Scroll
+
+local MoveRow = Instance.new("Frame")
+MoveRow.Name = "PlantMover"
+MoveRow.Size = UDim2.new(1, -6, 0, 42)
+MoveRow.BackgroundColor3 = Color3.fromRGB(34, 34, 41)
+MoveRow.BorderSizePixel = 0
+MoveRow.LayoutOrder = 1
+MoveRow.Parent = Scroll
+
+local RowCorner = Instance.new("UICorner")
+RowCorner.CornerRadius = UDim.new(0, 7)
+RowCorner.Parent = MoveRow
+
+local FeatureLabel = Instance.new("TextLabel")
+FeatureLabel.Size = UDim2.new(0, 78, 0, 30)
+FeatureLabel.Position = UDim2.new(0, 7, 0, 6)
+FeatureLabel.BackgroundTransparency = 1
+FeatureLabel.Text = "TROWEL MOVER"
+FeatureLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
+FeatureLabel.Font = Enum.Font.GothamBold
+FeatureLabel.TextSize = 9
+FeatureLabel.TextXAlignment = Enum.TextXAlignment.Left
+FeatureLabel.Parent = MoveRow
+
+local Search = Instance.new("TextBox")
+Search.Size = UDim2.new(0, 115, 0, 30)
+Search.Position = UDim2.new(0, 88, 0, 6)
+Search.BackgroundColor3 = Color3.fromRGB(45, 45, 53)
+Search.TextColor3 = Color3.fromRGB(255, 255, 255)
+Search.PlaceholderText = "Plant name..."
+Search.PlaceholderColor3 = Color3.fromRGB(140, 140, 140)
+Search.Text = ""
+Search.ClearTextOnFocus = false
+Search.Font = Enum.Font.Gotham
+Search.TextSize = 12
+Search.Parent = MoveRow
+
+local SearchCorner = Instance.new("UICorner")
+SearchCorner.CornerRadius = UDim.new(0, 6)
+SearchCorner.Parent = Search
+
+local Status = Instance.new("TextLabel")
+Status.Size = UDim2.new(1, -278, 0, 30)
+Status.Position = UDim2.new(0, 209, 0, 6)
+Status.BackgroundTransparency = 1
+Status.Text = "Ready"
+Status.TextTruncate = Enum.TextTruncate.AtEnd
+Status.TextColor3 = Color3.fromRGB(180, 180, 180)
+Status.Font = Enum.Font.Gotham
+Status.TextSize = 10
+Status.TextXAlignment = Enum.TextXAlignment.Left
+Status.Parent = MoveRow
+
+local Move = Instance.new("TextButton")
+Move.Size = UDim2.new(0, 62, 0, 30)
+Move.Position = UDim2.new(1, -68, 0, 6)
+Move.BackgroundColor3 = Color3.fromRGB(70, 170, 90)
+Move.TextColor3 = Color3.fromRGB(255, 255, 255)
+Move.Text = "MOVE"
+Move.Font = Enum.Font.GothamBold
+Move.TextSize = 11
+Move.Parent = MoveRow
+
+local MoveCorner = Instance.new("UICorner")
+MoveCorner.CornerRadius = UDim.new(0, 6)
+MoveCorner.Parent = Move
+
+local Trigger = Instance.new("TextButton")
+Trigger.Size = UDim2.new(0, 42, 0, 42)
+Trigger.Position = UDim2.new(0, 20, 0.5, -21)
+Trigger.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+Trigger.Text = "G"
+Trigger.TextColor3 = Color3.fromRGB(255, 255, 255)
+Trigger.Font = Enum.Font.GothamBold
+Trigger.TextSize = 16
+Trigger.Visible = false
+Trigger.Active = true
+Trigger.Draggable = true
+Trigger.Parent = ScreenGui
+
+local TriggerCorner = Instance.new("UICorner")
+TriggerCorner.CornerRadius = UDim.new(1, 0)
+TriggerCorner.Parent = Trigger
+
+local function FindPlants(Query)
+    Query = string.lower(Query)
+
+    local Results = {}
+    local Children = Plants:GetChildren()
+
+    for Index, Plant in ipairs(Children) do
+        local Name = string.lower(Plant.Name)
+
+        if string.find(Name, Query, 1, true) then
+            table.insert(Results, {
+                Instance = Plant,
+                Index = Index
+            })
+        end
+    end
+
+    return Results
+end
+
+Search:GetPropertyChangedSignal("Text"):Connect(function()
+    local Query = Search.Text
+
+    if Query == "" then
+        Status.Text = "Masukkan nama tanaman"
+        return
+    end
+
+    local Results = FindPlants(Query)
+
+    if #Results == 0 then
+        Status.Text = "Tidak ditemukan"
+    elseif #Results == 1 then
+        Status.Text = Results[1].Instance.Name .. " [" .. Results[1].Index .. "]"
+    else
+        Status.Text = tostring(#Results) .. " tanaman ditemukan"
+    end
+end)
+
+local Moving = false
+
+Move.MouseButton1Click:Connect(function()
+    if Moving then
+        return
+    end
+
+    local Query = Search.Text
+
+    if Query == "" then
+        Status.Text = "Masukkan nama tanaman!"
+        return
+    end
+
+    local Character = Player.Character
+
+    if not Character then
+        Status.Text = "Character tidak ditemukan"
+        return
+    end
+
+    local Root = Character:FindFirstChild("HumanoidRootPart")
+
+    if not Root then
+        Status.Text = "HumanoidRootPart tidak ditemukan"
+        return
+    end
+
+    local Results = FindPlants(Query)
+
+    if #Results == 0 then
+        Status.Text = "Tanaman tidak ditemukan"
+        return
+    end
+
+    Moving = true
+    Move.Text = "MOVING..."
+
+    local BasePosition = Root.Position
+
+    local Destination = CFrame.new(
+        BasePosition.X,
+        BasePosition.Y,
+        BasePosition.Z
+    )
+
+    local Moved = 0
+
+    for Number, Data in ipairs(Results) do
+        local Target = Data.Instance
+
+        if Target and Target.Parent then
+            DisablePlantCollision(Target)
+
+            local Trowel = GetTrowel()
+
+            if not Trowel then
+                Status.Text = "Trowel tidak ditemukan!"
+                break
+            end
+
+            Status.Text = "Moving " .. Number .. "/" .. #Results
+
+            local PickupSuccess = pcall(function()
+                Event:InvokeServer(
+                    "Pickup",
+                    Trowel,
+                    Target
+                )
+            end)
+
+            if PickupSuccess then
+                task.wait(0.15)
+
+                DisablePlantCollision(Target)
+
+                Trowel = GetTrowel()
+
+                if Trowel then
+                    local PlaceSuccess = pcall(function()
+                        Event:InvokeServer(
+                            "Place",
+                            Trowel,
+                            Target,
+                            Destination
+                        )
+                    end)
+
+                    if PlaceSuccess then
+                        Moved += 1
+                    end
+
+                    task.wait(0.15)
+
+                    DisablePlantCollision(Target)
+                end
+            end
+        end
+    end
+
+    Status.Text = "Selesai | " .. Moved .. "/" .. #Results .. " dipindahkan"
+    Move.Text = "MOVE"
+    Moving = false
+end)
+
+local Minimized = false
+
+Minimize.MouseButton1Click:Connect(function()
+    Minimized = true
+    Main.Visible = false
+    Trigger.Visible = true
+end)
+
+Trigger.MouseButton1Click:Connect(function()
+    Minimized = false
+    Main.Visible = true
+    Trigger.Visible = false
+end)
+
+Close.MouseButton1Click:Connect(function()
+    ScreenGui:Destroy()
+end)
