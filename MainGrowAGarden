@@ -1,9 +1,16 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TextService = game:GetService("TextService")
 
 local Player = Players.LocalPlayer
 local PlayerGui = Player:WaitForChild("PlayerGui")
 local Event = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("TrowelRemote")
+local WaterEvent = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("Water_RE")
+local NotificationEvent = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("Notification")
+local SellEvent = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("HalloweenEvent"):WaitForChild("HalloweenSellInventoryRE")
+local BuySeedEvent = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("BuyEventShopStock")
+local DeleteObjectEvent = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("DeleteObject")
+local CollectEvent = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("Crops"):WaitForChild("Collect")
 local Plants = workspace.Farm.Farm.Important.Plants_Physical
 
 local function GetTrowel()
@@ -55,11 +62,13 @@ end
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "TrowelMoverGUI"
 ScreenGui.ResetOnSpawn = false
+ScreenGui.DisplayOrder = 1000000
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
 ScreenGui.Parent = PlayerGui
 
 local Main = Instance.new("Frame")
-Main.Size = UDim2.new(0, 390, 0, 150)
-Main.Position = UDim2.new(0.5, -195, 0.5, -75)
+Main.Size = UDim2.new(0.6, 0, 0.6, 0)
+Main.Position = UDim2.new(0.2, 0, 0.2, 0)
 Main.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
 Main.BorderSizePixel = 0
 Main.Active = true
@@ -148,7 +157,7 @@ local FeatureLabel = Instance.new("TextLabel")
 FeatureLabel.Size = UDim2.new(0, 78, 0, 30)
 FeatureLabel.Position = UDim2.new(0, 7, 0, 6)
 FeatureLabel.BackgroundTransparency = 1
-FeatureLabel.Text = "TROWEL MOVER"
+FeatureLabel.Text = "PINDAH TANAMAN"
 FeatureLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
 FeatureLabel.Font = Enum.Font.GothamBold
 FeatureLabel.TextSize = 9
@@ -162,7 +171,7 @@ Search.BackgroundColor3 = Color3.fromRGB(45, 45, 53)
 Search.TextColor3 = Color3.fromRGB(255, 255, 255)
 Search.PlaceholderText = "Plant name..."
 Search.PlaceholderColor3 = Color3.fromRGB(140, 140, 140)
-Search.Text = ""
+Search.Text = "Hallow"
 Search.ClearTextOnFocus = false
 Search.Font = Enum.Font.Gotham
 Search.TextSize = 12
@@ -198,6 +207,459 @@ local MoveCorner = Instance.new("UICorner")
 MoveCorner.CornerRadius = UDim.new(0, 6)
 MoveCorner.Parent = Move
 
+local WaterRow = Instance.new("Frame")
+WaterRow.Name = "AutoWater"
+WaterRow.Size = UDim2.new(1, -6, 0, 42)
+WaterRow.BackgroundColor3 = Color3.fromRGB(34, 34, 41)
+WaterRow.BorderSizePixel = 0
+WaterRow.LayoutOrder = 2
+WaterRow.Parent = Scroll
+
+local WaterRowCorner = Instance.new("UICorner")
+WaterRowCorner.CornerRadius = UDim.new(0, 7)
+WaterRowCorner.Parent = WaterRow
+
+local WaterLabel = Instance.new("TextLabel")
+WaterLabel.Size = UDim2.new(0, 110, 0, 30)
+WaterLabel.Position = UDim2.new(0, 7, 0, 6)
+WaterLabel.BackgroundTransparency = 1
+WaterLabel.Text = "SIRAM OTOMATIS"
+WaterLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
+WaterLabel.Font = Enum.Font.GothamBold
+WaterLabel.TextSize = 9
+WaterLabel.TextXAlignment = Enum.TextXAlignment.Left
+WaterLabel.Parent = WaterRow
+
+local WaterDelay = Instance.new("TextBox")
+WaterDelay.Size = UDim2.new(0, 80, 0, 30)
+WaterDelay.Position = UDim2.new(0, 120, 0, 6)
+WaterDelay.BackgroundColor3 = Color3.fromRGB(45, 45, 53)
+WaterDelay.TextColor3 = Color3.fromRGB(255, 255, 255)
+WaterDelay.PlaceholderText = "Delay"
+WaterDelay.PlaceholderColor3 = Color3.fromRGB(140, 140, 140)
+WaterDelay.Text = "1"
+WaterDelay.ClearTextOnFocus = false
+WaterDelay.Font = Enum.Font.Gotham
+WaterDelay.TextSize = 12
+WaterDelay.Parent = WaterRow
+
+local WaterDelayCorner = Instance.new("UICorner")
+WaterDelayCorner.CornerRadius = UDim.new(0, 6)
+WaterDelayCorner.Parent = WaterDelay
+
+local WaterStatus = Instance.new("TextLabel")
+WaterStatus.Size = UDim2.new(1, -278, 0, 30)
+WaterStatus.Position = UDim2.new(0, 209, 0, 6)
+WaterStatus.BackgroundTransparency = 1
+WaterStatus.Text = "OFF"
+WaterStatus.TextColor3 = Color3.fromRGB(180, 180, 180)
+WaterStatus.Font = Enum.Font.Gotham
+WaterStatus.TextSize = 10
+WaterStatus.TextXAlignment = Enum.TextXAlignment.Left
+WaterStatus.Parent = WaterRow
+
+local WaterLoop = Instance.new("TextButton")
+WaterLoop.Size = UDim2.new(0, 62, 0, 30)
+WaterLoop.Position = UDim2.new(1, -68, 0, 6)
+WaterLoop.BackgroundColor3 = Color3.fromRGB(70, 120, 180)
+WaterLoop.TextColor3 = Color3.fromRGB(255, 255, 255)
+WaterLoop.Text = "LOOP"
+WaterLoop.Font = Enum.Font.GothamBold
+WaterLoop.TextSize = 11
+WaterLoop.Parent = WaterRow
+
+local WaterLoopCorner = Instance.new("UICorner")
+WaterLoopCorner.CornerRadius = UDim.new(0, 6)
+WaterLoopCorner.Parent = WaterLoop
+
+local SellRow = Instance.new("Frame")
+SellRow.Name = "AutoSell"
+SellRow.Size = UDim2.new(1, -6, 0, 42)
+SellRow.BackgroundColor3 = Color3.fromRGB(34, 34, 41)
+SellRow.BorderSizePixel = 0
+SellRow.LayoutOrder = 3
+SellRow.Parent = Scroll
+
+local SellRowCorner = Instance.new("UICorner")
+SellRowCorner.CornerRadius = UDim.new(0, 7)
+SellRowCorner.Parent = SellRow
+
+local SellLabel = Instance.new("TextLabel")
+SellLabel.Size = UDim2.new(0, 110, 0, 30)
+SellLabel.Position = UDim2.new(0, 7, 0, 6)
+SellLabel.BackgroundTransparency = 1
+SellLabel.Text = "JUAL OTOMATIS"
+SellLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
+SellLabel.Font = Enum.Font.GothamBold
+SellLabel.TextSize = 9
+SellLabel.TextXAlignment = Enum.TextXAlignment.Left
+SellLabel.Parent = SellRow
+
+local SellDelay = Instance.new("TextBox")
+SellDelay.Size = UDim2.new(0, 80, 0, 30)
+SellDelay.Position = UDim2.new(0, 120, 0, 6)
+SellDelay.BackgroundColor3 = Color3.fromRGB(45, 45, 53)
+SellDelay.TextColor3 = Color3.fromRGB(255, 255, 255)
+SellDelay.PlaceholderText = "Delay"
+SellDelay.PlaceholderColor3 = Color3.fromRGB(140, 140, 140)
+SellDelay.Text = "10"
+SellDelay.ClearTextOnFocus = false
+SellDelay.Font = Enum.Font.Gotham
+SellDelay.TextSize = 12
+SellDelay.Parent = SellRow
+
+local SellDelayCorner = Instance.new("UICorner")
+SellDelayCorner.CornerRadius = UDim.new(0, 6)
+SellDelayCorner.Parent = SellDelay
+
+local SellStatus = Instance.new("TextLabel")
+SellStatus.Size = UDim2.new(1, -278, 0, 30)
+SellStatus.Position = UDim2.new(0, 209, 0, 6)
+SellStatus.BackgroundTransparency = 1
+SellStatus.Text = "OFF"
+SellStatus.TextColor3 = Color3.fromRGB(180, 180, 180)
+SellStatus.Font = Enum.Font.Gotham
+SellStatus.TextSize = 10
+SellStatus.TextXAlignment = Enum.TextXAlignment.Left
+SellStatus.Parent = SellRow
+
+local SellLoop = Instance.new("TextButton")
+SellLoop.Size = UDim2.new(0, 62, 0, 30)
+SellLoop.Position = UDim2.new(1, -68, 0, 6)
+SellLoop.BackgroundColor3 = Color3.fromRGB(70, 120, 180)
+SellLoop.TextColor3 = Color3.fromRGB(255, 255, 255)
+SellLoop.Text = "OFF"
+SellLoop.Font = Enum.Font.GothamBold
+SellLoop.TextSize = 11
+SellLoop.Parent = SellRow
+
+local SellLoopCorner = Instance.new("UICorner")
+SellLoopCorner.CornerRadius = UDim.new(0, 6)
+SellLoopCorner.Parent = SellLoop
+
+local DeleteRow = Instance.new("Frame")
+DeleteRow.Name = "DeleteSprinkler"
+DeleteRow.Size = UDim2.new(1, -6, 0, 42)
+DeleteRow.BackgroundColor3 = Color3.fromRGB(34, 34, 41)
+DeleteRow.BorderSizePixel = 0
+DeleteRow.LayoutOrder = 4
+DeleteRow.Parent = Scroll
+
+local DeleteRowCorner = Instance.new("UICorner")
+DeleteRowCorner.CornerRadius = UDim.new(0, 7)
+DeleteRowCorner.Parent = DeleteRow
+
+local DeleteLabel = Instance.new("TextLabel")
+DeleteLabel.Size = UDim2.new(0, 110, 0, 30)
+DeleteLabel.Position = UDim2.new(0, 7, 0, 6)
+DeleteLabel.BackgroundTransparency = 1
+DeleteLabel.Text = "HAPUS SPRINKLER"
+DeleteLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
+DeleteLabel.Font = Enum.Font.GothamBold
+DeleteLabel.TextSize = 9
+DeleteLabel.TextXAlignment = Enum.TextXAlignment.Left
+DeleteLabel.Parent = DeleteRow
+
+local DeleteStatus = Instance.new("TextLabel")
+DeleteStatus.Size = UDim2.new(1, -190, 0, 30)
+DeleteStatus.Position = UDim2.new(0, 120, 0, 6)
+DeleteStatus.BackgroundTransparency = 1
+DeleteStatus.Text = "Siap"
+DeleteStatus.TextColor3 = Color3.fromRGB(180, 180, 180)
+DeleteStatus.Font = Enum.Font.Gotham
+DeleteStatus.TextSize = 10
+DeleteStatus.TextXAlignment = Enum.TextXAlignment.Left
+DeleteStatus.Parent = DeleteRow
+
+local DeleteButton = Instance.new("TextButton")
+DeleteButton.Size = UDim2.new(0, 62, 0, 30)
+DeleteButton.Position = UDim2.new(1, -68, 0, 6)
+DeleteButton.BackgroundColor3 = Color3.fromRGB(190, 70, 70)
+DeleteButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+DeleteButton.Text = "OFF"
+DeleteButton.Font = Enum.Font.GothamBold
+DeleteButton.TextSize = 10
+DeleteButton.Parent = DeleteRow
+
+local DeleteButtonCorner = Instance.new("UICorner")
+DeleteButtonCorner.CornerRadius = UDim.new(0, 6)
+DeleteButtonCorner.Parent = DeleteButton
+
+local HarvestRow = Instance.new("Frame")
+HarvestRow.Name = "AutoHarvest"
+HarvestRow.Size = UDim2.new(1, -6, 0, 42)
+HarvestRow.BackgroundColor3 = Color3.fromRGB(34, 34, 41)
+HarvestRow.BorderSizePixel = 0
+HarvestRow.LayoutOrder = 5
+HarvestRow.Parent = Scroll
+
+local HarvestRowCorner = Instance.new("UICorner")
+HarvestRowCorner.CornerRadius = UDim.new(0, 7)
+HarvestRowCorner.Parent = HarvestRow
+
+local HarvestLabel = Instance.new("TextLabel")
+HarvestLabel.Size = UDim2.new(0, 110, 0, 30)
+HarvestLabel.Position = UDim2.new(0, 7, 0, 6)
+HarvestLabel.BackgroundTransparency = 1
+HarvestLabel.Text = "PANEN OTOMATIS"
+HarvestLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
+HarvestLabel.Font = Enum.Font.GothamBold
+HarvestLabel.TextSize = 9
+HarvestLabel.TextXAlignment = Enum.TextXAlignment.Left
+HarvestLabel.Parent = HarvestRow
+
+local HarvestStatus = Instance.new("TextLabel")
+HarvestStatus.Size = UDim2.new(1, -190, 0, 30)
+HarvestStatus.Position = UDim2.new(0, 120, 0, 6)
+HarvestStatus.BackgroundTransparency = 1
+HarvestStatus.Text = "OFF"
+HarvestStatus.TextColor3 = Color3.fromRGB(180, 180, 180)
+HarvestStatus.Font = Enum.Font.Gotham
+HarvestStatus.TextSize = 10
+HarvestStatus.TextXAlignment = Enum.TextXAlignment.Left
+HarvestStatus.Parent = HarvestRow
+
+local HarvestButton = Instance.new("TextButton")
+HarvestButton.Size = UDim2.new(0, 62, 0, 30)
+HarvestButton.Position = UDim2.new(1, -68, 0, 6)
+HarvestButton.BackgroundColor3 = Color3.fromRGB(190, 70, 70)
+HarvestButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+HarvestButton.Text = "OFF"
+HarvestButton.Font = Enum.Font.GothamBold
+HarvestButton.TextSize = 10
+HarvestButton.Parent = HarvestRow
+
+local HarvestButtonCorner = Instance.new("UICorner")
+HarvestButtonCorner.CornerRadius = UDim.new(0, 6)
+HarvestButtonCorner.Parent = HarvestButton
+
+local SeedRow = Instance.new("Frame")
+SeedRow.Name = "AutoBuySeeds"
+SeedRow.Size = UDim2.new(1, -6, 0, 42)
+SeedRow.BackgroundColor3 = Color3.fromRGB(34, 34, 41)
+SeedRow.BorderSizePixel = 0
+SeedRow.LayoutOrder = 6
+SeedRow.ClipsDescendants = false
+SeedRow.Parent = Scroll
+
+local SeedRowCorner = Instance.new("UICorner")
+SeedRowCorner.CornerRadius = UDim.new(0, 7)
+SeedRowCorner.Parent = SeedRow
+
+local SeedLabel = Instance.new("TextLabel")
+SeedLabel.Size = UDim2.new(0, 110, 0, 30)
+SeedLabel.Position = UDim2.new(0, 7, 0, 6)
+SeedLabel.BackgroundTransparency = 1
+SeedLabel.Text = "BELI BENIH"
+SeedLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
+SeedLabel.Font = Enum.Font.GothamBold
+SeedLabel.TextSize = 9
+SeedLabel.TextXAlignment = Enum.TextXAlignment.Left
+SeedLabel.Parent = SeedRow
+
+local SeedMenuButton = Instance.new("TextButton")
+SeedMenuButton.Size = UDim2.new(0, 105, 0, 30)
+SeedMenuButton.Position = UDim2.new(0, 120, 0, 6)
+SeedMenuButton.BackgroundColor3 = Color3.fromRGB(45, 45, 53)
+SeedMenuButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+SeedMenuButton.Text = "BENIH ▼"
+SeedMenuButton.Font = Enum.Font.GothamBold
+SeedMenuButton.TextSize = 10
+SeedMenuButton.Parent = SeedRow
+
+local SeedMenuCorner = Instance.new("UICorner")
+SeedMenuCorner.CornerRadius = UDim.new(0, 6)
+SeedMenuCorner.Parent = SeedMenuButton
+
+local SeedStatus = Instance.new("TextLabel")
+SeedStatus.Size = UDim2.new(0, 70, 0, 30)
+SeedStatus.Position = UDim2.new(0, 231, 0, 6)
+SeedStatus.BackgroundTransparency = 1
+SeedStatus.Text = "8 dipilih"
+SeedStatus.TextColor3 = Color3.fromRGB(180, 180, 180)
+SeedStatus.Font = Enum.Font.Gotham
+SeedStatus.TextSize = 9
+SeedStatus.TextXAlignment = Enum.TextXAlignment.Left
+SeedStatus.Parent = SeedRow
+
+local SeedLoop = Instance.new("TextButton")
+SeedLoop.Size = UDim2.new(0, 62, 0, 30)
+SeedLoop.Position = UDim2.new(1, -68, 0, 6)
+SeedLoop.BackgroundColor3 = Color3.fromRGB(70, 170, 90)
+SeedLoop.TextColor3 = Color3.fromRGB(255, 255, 255)
+SeedLoop.Text = "ON"
+SeedLoop.Font = Enum.Font.GothamBold
+SeedLoop.TextSize = 11
+SeedLoop.Parent = SeedRow
+
+local SeedLoopCorner = Instance.new("UICorner")
+SeedLoopCorner.CornerRadius = UDim.new(0, 6)
+SeedLoopCorner.Parent = SeedLoop
+
+local SeedNames = {
+    "Halloween Haunted Hallow",
+    "Halloween Fang Root",
+    "Halloween Blood Kiwi",
+    "Halloween Webberry",
+    "Halloween Witch's Broom",
+    "Halloween Candy Cluster",
+    "Halloween Pumpkin Lantern",
+    "Haunted Sprinkler",
+    "Halloween Spider Shrub",
+    "Halloween Candy Corn Carrot"
+}
+
+local LongestSeedWidth = 0
+for _, Name in ipairs(SeedNames) do
+    local Bounds = TextService:GetTextSize("  ☑  " .. Name, 9, Enum.Font.Gotham, Vector2.new(1000, 25))
+    LongestSeedWidth = math.max(LongestSeedWidth, Bounds.X)
+end
+
+local SeedDropdownWidth = math.ceil(LongestSeedWidth + 26)
+
+local SeedDropdown = Instance.new("Frame")
+SeedDropdown.Size = UDim2.new(0, SeedDropdownWidth, 0, 172)
+SeedDropdown.BackgroundColor3 = Color3.fromRGB(29, 29, 35)
+SeedDropdown.BorderSizePixel = 0
+SeedDropdown.Visible = false
+SeedDropdown.ZIndex = 1000000
+SeedDropdown.Parent = ScreenGui
+
+local SeedDropdownCorner = Instance.new("UICorner")
+SeedDropdownCorner.CornerRadius = UDim.new(0, 6)
+SeedDropdownCorner.Parent = SeedDropdown
+
+local SeedAll = Instance.new("TextButton")
+SeedAll.Size = UDim2.new(1, -10, 0, 24)
+SeedAll.Position = UDim2.new(0, 5, 0, 5)
+SeedAll.BackgroundColor3 = Color3.fromRGB(48, 48, 58)
+SeedAll.TextColor3 = Color3.fromRGB(235, 235, 235)
+SeedAll.Text = "PILIH SEMUA"
+SeedAll.Font = Enum.Font.GothamBold
+SeedAll.TextSize = 9
+SeedAll.ZIndex = 1000000
+SeedAll.Parent = SeedDropdown
+
+local SeedAllCorner = Instance.new("UICorner")
+SeedAllCorner.CornerRadius = UDim.new(0, 5)
+SeedAllCorner.Parent = SeedAll
+
+local SeedList = Instance.new("ScrollingFrame")
+SeedList.Size = UDim2.new(1, -10, 1, -38)
+SeedList.Position = UDim2.new(0, 5, 0, 33)
+SeedList.BackgroundTransparency = 1
+SeedList.BorderSizePixel = 0
+SeedList.ScrollBarThickness = 3
+SeedList.CanvasSize = UDim2.new(0, 0, 0, 0)
+SeedList.AutomaticCanvasSize = Enum.AutomaticSize.Y
+SeedList.ScrollingDirection = Enum.ScrollingDirection.Y
+SeedList.ZIndex = 1000000
+SeedList.Parent = SeedDropdown
+
+local SeedListLayout = Instance.new("UIListLayout")
+SeedListLayout.Padding = UDim.new(0, 3)
+SeedListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+SeedListLayout.Parent = SeedList
+
+local SelectedSeeds = {}
+local SeedButtons = {}
+
+for Index, Name in ipairs(SeedNames) do
+    SelectedSeeds[Name] = Index <= 8
+
+    local Button = Instance.new("TextButton")
+    Button.Size = UDim2.new(1, -3, 0, 25)
+    Button.BackgroundColor3 = Color3.fromRGB(40, 40, 48)
+    Button.TextColor3 = Color3.fromRGB(230, 230, 230)
+    Button.Font = Enum.Font.Gotham
+    Button.TextSize = 9
+    Button.TextXAlignment = Enum.TextXAlignment.Left
+    Button.LayoutOrder = Index
+    Button.ZIndex = 1000000
+    Button.Parent = SeedList
+
+    local ButtonCorner = Instance.new("UICorner")
+    ButtonCorner.CornerRadius = UDim.new(0, 5)
+    ButtonCorner.Parent = Button
+
+    SeedButtons[Name] = Button
+end
+
+local function RefreshSeedButtons()
+    local Count = 0
+
+    for _, Name in ipairs(SeedNames) do
+        local Button = SeedButtons[Name]
+        if SelectedSeeds[Name] then
+            Count += 1
+            Button.Text = "  ☑  " .. Name
+            Button.BackgroundColor3 = Color3.fromRGB(55, 95, 65)
+        else
+            Button.Text = "  ☐  " .. Name
+            Button.BackgroundColor3 = Color3.fromRGB(40, 40, 48)
+        end
+    end
+
+    SeedStatus.Text = tostring(Count) .. " dipilih"
+    SeedAll.Text = Count == #SeedNames and "BATAL SEMUA" or "PILIH SEMUA"
+end
+
+for _, Name in ipairs(SeedNames) do
+    SeedButtons[Name].MouseButton1Click:Connect(function()
+        SelectedSeeds[Name] = not SelectedSeeds[Name]
+        RefreshSeedButtons()
+    end)
+end
+
+SeedAll.MouseButton1Click:Connect(function()
+    local AllSelected = true
+
+    for _, Name in ipairs(SeedNames) do
+        if not SelectedSeeds[Name] then
+            AllSelected = false
+            break
+        end
+    end
+
+    for _, Name in ipairs(SeedNames) do
+        SelectedSeeds[Name] = not AllSelected
+    end
+
+    RefreshSeedButtons()
+end)
+
+local SeedDropdownOpen = false
+
+local function UpdateSeedDropdownPosition()
+    local ButtonPosition = SeedMenuButton.AbsolutePosition
+    local ButtonSize = SeedMenuButton.AbsoluteSize
+    local Viewport = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1920, 1080)
+    local X = ButtonPosition.X
+    local Y = ButtonPosition.Y + ButtonSize.Y + 4
+
+    if X + SeedDropdownWidth > Viewport.X - 6 then
+        X = math.max(6, Viewport.X - SeedDropdownWidth - 6)
+    end
+
+    if Y + 172 > Viewport.Y - 6 then
+        Y = math.max(6, ButtonPosition.Y - 176)
+    end
+
+    SeedDropdown.Position = UDim2.fromOffset(X, Y)
+end
+
+SeedMenuButton.MouseButton1Click:Connect(function()
+    SeedDropdownOpen = not SeedDropdownOpen
+    SeedDropdown.Visible = SeedDropdownOpen
+    SeedMenuButton.Text = SeedDropdownOpen and "BENIH ▲" or "BENIH ▼"
+
+    if SeedDropdownOpen then
+        task.defer(UpdateSeedDropdownPosition)
+    end
+end)
+
+RefreshSeedButtons()
+
 local Trigger = Instance.new("TextButton")
 Trigger.Size = UDim2.new(0, 42, 0, 42)
 Trigger.Position = UDim2.new(0, 20, 0.5, -21)
@@ -214,6 +676,22 @@ Trigger.Parent = ScreenGui
 local TriggerCorner = Instance.new("UICorner")
 TriggerCorner.CornerRadius = UDim.new(1, 0)
 TriggerCorner.Parent = Trigger
+
+for _, Object in ipairs(ScreenGui:GetDescendants()) do
+    if Object:IsA("GuiObject") then
+        pcall(function()
+            Object.ZIndex = 1000000
+        end)
+    end
+end
+
+ScreenGui.DescendantAdded:Connect(function(Object)
+    if Object:IsA("GuiObject") then
+        pcall(function()
+            Object.ZIndex = 1000000
+        end)
+    end
+end)
 
 local function FindPlants(Query)
     Query = string.lower(Query)
@@ -254,6 +732,107 @@ Search:GetPropertyChangedSignal("Text"):Connect(function()
     end
 end)
 
+local WaterLoopEnabled = false
+local WaterLoopToken = 0
+local WaterPosition = nil
+local WateringCanMissing = false
+local WaitingForWaterResult = false
+
+local function GetWaterDelay()
+    local Delay = tonumber(WaterDelay.Text)
+    if not Delay or Delay <= 0 then
+        Delay = 1
+        WaterDelay.Text = "1"
+    end
+    return Delay
+end
+
+local function FireWater()
+    if not WaterPosition then
+        return false
+    end
+
+    WaitingForWaterResult = true
+    WateringCanMissing = false
+    WaterEvent:FireServer(Vector3.new(WaterPosition.X, 0.1, WaterPosition.Z))
+    return true
+end
+
+local function StartWaterLoop()
+    if WaterLoopEnabled then
+        return true
+    end
+
+    local Character = Player.Character
+    local Root = Character and Character:FindFirstChild("HumanoidRootPart")
+
+    if not Root then
+        WaterStatus.Text = "No player"
+        return false
+    end
+
+    WaterLoopEnabled = true
+    WaterLoopToken += 1
+    local Token = WaterLoopToken
+    local Position = Root.Position
+    WaterPosition = Vector3.new(Position.X, 0.1, Position.Z)
+    WateringCanMissing = false
+    WaitingForWaterResult = false
+    WaterLoop.Text = "ON"
+    WaterLoop.BackgroundColor3 = Color3.fromRGB(70, 170, 90)
+    WaterStatus.Text = "ON"
+
+    task.spawn(function()
+        while WaterLoopEnabled and WaterLoopToken == Token and ScreenGui.Parent do
+            if not FireWater() then
+                WaterStatus.Text = "No player"
+                task.wait(GetWaterDelay())
+            else
+                task.wait(0.35)
+                WaitingForWaterResult = false
+
+                if WateringCanMissing then
+                    WaterStatus.Text = "WAIT 5s"
+                    task.wait(4.65)
+                else
+                    local Delay = GetWaterDelay()
+                    WaterStatus.Text = "ON"
+                    task.wait(math.max(Delay - 0.35, 0))
+                end
+            end
+        end
+    end)
+
+    return true
+end
+
+local function StopWaterLoop()
+    WaterLoopEnabled = false
+    WaterLoopToken += 1
+    WaterPosition = nil
+    WateringCanMissing = false
+    WaitingForWaterResult = false
+    WaterLoop.Text = "LOOP"
+    WaterLoop.BackgroundColor3 = Color3.fromRGB(70, 120, 180)
+    WaterStatus.Text = "OFF"
+end
+
+local function ShowNotification(Message)
+    local Fired = false
+
+    if type(firesignal) == "function" then
+        Fired = pcall(function()
+            firesignal(NotificationEvent.OnClientEvent, Message)
+        end)
+    end
+
+    if not Fired then
+        pcall(function()
+            NotificationEvent:FireServer(Message)
+        end)
+    end
+end
+
 local Moving = false
 
 Move.MouseButton1Click:Connect(function()
@@ -288,6 +867,8 @@ Move.MouseButton1Click:Connect(function()
         Status.Text = "Tanaman tidak ditemukan"
         return
     end
+
+    StartWaterLoop()
 
     Moving = true
     Move.Text = "MOVING..."
@@ -326,30 +907,24 @@ Move.MouseButton1Click:Connect(function()
             end)
 
             if PickupSuccess then
-                task.wait(0.15)
-
+                task.wait(0.03)
                 DisablePlantCollision(Target)
 
-                Trowel = GetTrowel()
+                local PlaceSuccess = pcall(function()
+                    Event:InvokeServer(
+                        "Place",
+                        Trowel,
+                        Target,
+                        Destination
+                    )
+                end)
 
-                if Trowel then
-                    local PlaceSuccess = pcall(function()
-                        Event:InvokeServer(
-                            "Place",
-                            Trowel,
-                            Target,
-                            Destination
-                        )
-                    end)
-
-                    if PlaceSuccess then
-                        Moved += 1
-                    end
-
-                    task.wait(0.15)
-
-                    DisablePlantCollision(Target)
+                if PlaceSuccess then
+                    Moved += 1
                 end
+
+                task.wait(0.03)
+                DisablePlantCollision(Target)
             end
         end
     end
@@ -359,10 +934,300 @@ Move.MouseButton1Click:Connect(function()
     Moving = false
 end)
 
+NotificationEvent.OnClientEvent:Connect(function(Message)
+    if Message == "Could not find watering can." and WaterLoopEnabled and WaitingForWaterResult then
+        WateringCanMissing = true
+    end
+end)
+
+local function FireWater()
+    if not WaterPosition then
+        return false
+    end
+
+    WaitingForWaterResult = true
+    WateringCanMissing = false
+    WaterEvent:FireServer(Vector3.new(WaterPosition.X, 0.1, WaterPosition.Z))
+    return true
+end
+
+WaterDelay.FocusLost:Connect(function()
+    GetWaterDelay()
+end)
+
+WaterLoop.MouseButton1Click:Connect(function()
+    if WaterLoopEnabled then
+        StopWaterLoop()
+    else
+        StartWaterLoop()
+    end
+end)
+
+local SellLoopEnabled = true
+local SellLoopToken = 1
+
+local function GetSellDelay()
+    local Delay = tonumber(SellDelay.Text)
+    if not Delay or Delay <= 0 then
+        Delay = 10
+        SellDelay.Text = "10"
+    end
+    return Delay
+end
+
+local function StartSellLoop(Token)
+    SellLoop.Text = "ON"
+    SellLoop.BackgroundColor3 = Color3.fromRGB(70, 170, 90)
+    SellStatus.Text = "ON"
+
+    task.spawn(function()
+        while SellLoopEnabled and SellLoopToken == Token and ScreenGui.Parent do
+            local Success = pcall(function()
+                SellEvent:FireServer()
+            end)
+
+            if Success then
+                SellStatus.Text = "ON"
+            else
+                SellStatus.Text = "Error"
+            end
+
+            task.wait(GetSellDelay())
+        end
+    end)
+end
+
+SellDelay.FocusLost:Connect(function()
+    GetSellDelay()
+end)
+
+SellLoop.MouseButton1Click:Connect(function()
+    SellLoopEnabled = not SellLoopEnabled
+    SellLoopToken += 1
+
+    if SellLoopEnabled then
+        StartSellLoop(SellLoopToken)
+    else
+        SellLoop.Text = "OFF"
+        SellLoop.BackgroundColor3 = Color3.fromRGB(70, 120, 180)
+        SellStatus.Text = "OFF"
+    end
+end)
+
+StartSellLoop(SellLoopToken)
+
+local function GetSprinklers()
+    local Results = {}
+    local Seen = {}
+
+    local function Add(Object)
+        if Object and not Seen[Object] and string.find(string.lower(Object.Name), "sprinkler", 1, true) then
+            Seen[Object] = true
+            table.insert(Results, Object)
+        end
+    end
+
+    if type(getnilinstances) == "function" then
+        local Success, NilObjects = pcall(getnilinstances)
+        if Success and NilObjects then
+            for _, Object in ipairs(NilObjects) do
+                Add(Object)
+            end
+        end
+    end
+
+    for _, Object in ipairs(game:GetDescendants()) do
+        Add(Object)
+    end
+
+    return Results
+end
+
+local DeleteLoopEnabled = false
+local DeleteLoopToken = 0
+
+local function DeleteSprinklersOnce()
+    local Sprinklers = GetSprinklers()
+
+    if #Sprinklers == 0 then
+        DeleteStatus.Text = "0 ditemukan"
+        return 0
+    end
+
+    local Sent = 0
+
+    for _, Sprinkler in ipairs(Sprinklers) do
+        local Success = pcall(function()
+            DeleteObjectEvent:FireServer(Sprinkler)
+        end)
+
+        if Success then
+            Sent += 1
+        end
+    end
+
+    DeleteStatus.Text = tostring(Sent) .. "/" .. tostring(#Sprinklers) .. " dikirim"
+    return Sent
+end
+
+local function StartDeleteLoop(Token)
+    DeleteButton.Text = "ON"
+    DeleteButton.BackgroundColor3 = Color3.fromRGB(70, 170, 90)
+    DeleteStatus.Text = "Memindai..."
+
+    task.spawn(function()
+        while DeleteLoopEnabled and DeleteLoopToken == Token do
+            DeleteSprinklersOnce()
+
+            local Waited = 0
+            while Waited < 1 and DeleteLoopEnabled and DeleteLoopToken == Token do
+                task.wait(0.1)
+                Waited += 0.1
+            end
+        end
+    end)
+end
+
+DeleteButton.MouseButton1Click:Connect(function()
+    DeleteLoopEnabled = not DeleteLoopEnabled
+    DeleteLoopToken += 1
+
+    if DeleteLoopEnabled then
+        StartDeleteLoop(DeleteLoopToken)
+    else
+        DeleteButton.Text = "OFF"
+        DeleteButton.BackgroundColor3 = Color3.fromRGB(190, 70, 70)
+        DeleteStatus.Text = "OFF"
+    end
+end)
+
+local HarvestLoopEnabled = false
+local HarvestLoopToken = 0
+
+local function HarvestOnce()
+    local FruitContainers = 0
+    local Targets = {}
+
+    for _, Plant in ipairs(Plants:GetChildren()) do
+        local Fruits = Plant:FindFirstChild("Fruits")
+
+        if Fruits then
+            FruitContainers += 1
+
+            for _, Object in ipairs(Fruits:GetDescendants()) do
+                if Object:IsA("Model") then
+                    Targets[#Targets + 1] = Object
+                end
+            end
+        end
+    end
+
+    if #Targets == 0 then
+        HarvestStatus.Text = tostring(FruitContainers) .. " Fruits | 0 buah"
+        return 0
+    end
+
+    local Sent = 0
+
+    for _, Target in ipairs(Targets) do
+        if not HarvestLoopEnabled then
+            break
+        end
+
+        local Success = pcall(function()
+            CollectEvent:FireServer({Target})
+        end)
+
+        if Success then
+            Sent += 1
+        end
+
+        task.wait(0.01)
+    end
+
+    HarvestStatus.Text = tostring(#Targets) .. " buah | " .. tostring(Sent) .. " sent"
+    return Sent
+end
+
+local function StartHarvestLoop(Token)
+    HarvestButton.Text = "ON"
+    HarvestButton.BackgroundColor3 = Color3.fromRGB(70, 170, 90)
+    HarvestStatus.Text = "Memindai buah..."
+
+    task.spawn(function()
+        while HarvestLoopEnabled and HarvestLoopToken == Token and ScreenGui.Parent do
+            HarvestOnce()
+
+            local Waited = 0
+            while Waited < 0.2 and HarvestLoopEnabled and HarvestLoopToken == Token do
+                task.wait(0.05)
+                Waited += 0.05
+            end
+        end
+    end)
+end
+
+HarvestButton.MouseButton1Click:Connect(function()
+    HarvestLoopEnabled = not HarvestLoopEnabled
+    HarvestLoopToken += 1
+
+    if HarvestLoopEnabled then
+        StartHarvestLoop(HarvestLoopToken)
+    else
+        HarvestButton.Text = "OFF"
+        HarvestButton.BackgroundColor3 = Color3.fromRGB(190, 70, 70)
+        HarvestStatus.Text = "OFF"
+    end
+end)
+
+local SeedLoopEnabled = true
+local SeedLoopToken = 1
+
+local function BuySelectedSeeds()
+    for _, Name in ipairs(SeedNames) do
+        if SelectedSeeds[Name] then
+            for _ = 1, 3 do
+                pcall(function()
+                    BuySeedEvent:FireServer(Name, "Scary Seeds")
+                end)
+            end
+        end
+    end
+end
+
+local function StartSeedLoop(Token)
+    task.spawn(function()
+        while SeedLoopEnabled and SeedLoopToken == Token and ScreenGui.Parent do
+            BuySelectedSeeds()
+            task.wait(60)
+        end
+    end)
+end
+
+SeedLoop.MouseButton1Click:Connect(function()
+    SeedLoopEnabled = not SeedLoopEnabled
+    SeedLoopToken += 1
+
+    if SeedLoopEnabled then
+        SeedLoop.Text = "ON"
+        SeedLoop.BackgroundColor3 = Color3.fromRGB(70, 170, 90)
+        StartSeedLoop(SeedLoopToken)
+    else
+        SeedLoop.Text = "OFF"
+        SeedLoop.BackgroundColor3 = Color3.fromRGB(70, 120, 180)
+    end
+end)
+
+StartSeedLoop(SeedLoopToken)
+
 local Minimized = false
 
 Minimize.MouseButton1Click:Connect(function()
     Minimized = true
+    SeedDropdownOpen = false
+    SeedDropdown.Visible = false
+    SeedMenuButton.Text = "BENIH ▼"
+    Trigger.Position = Main.Position
     Main.Visible = false
     Trigger.Visible = true
 end)
@@ -374,5 +1239,15 @@ Trigger.MouseButton1Click:Connect(function()
 end)
 
 Close.MouseButton1Click:Connect(function()
+    WaterLoopEnabled = false
+    WaterLoopToken += 1
+    SellLoopEnabled = false
+    SellLoopToken += 1
+    SeedLoopEnabled = false
+    SeedLoopToken += 1
+    DeleteLoopEnabled = false
+    DeleteLoopToken += 1
+    HarvestLoopEnabled = false
+    HarvestLoopToken += 1
     ScreenGui:Destroy()
 end)
