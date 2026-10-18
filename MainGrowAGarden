@@ -1,6 +1,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TextService = game:GetService("TextService")
+local UserInputService = game:GetService("UserInputService")
 
 local Player = Players.LocalPlayer
 local PlayerGui = Player:WaitForChild("PlayerGui")
@@ -80,7 +81,7 @@ MainCorner.CornerRadius = UDim.new(0, 9)
 MainCorner.Parent = Main
 
 local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, -82, 0, 30)
+Title.Size = UDim2.new(1, -50, 0, 30)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
 Title.Text = "GAG"
@@ -92,7 +93,7 @@ Title.Parent = Main
 
 local Minimize = Instance.new("TextButton")
 Minimize.Size = UDim2.new(0, 27, 0, 22)
-Minimize.Position = UDim2.new(1, -61, 0, 4)
+Minimize.Position = UDim2.new(1, -31, 0, 4)
 Minimize.BackgroundColor3 = Color3.fromRGB(55, 55, 65)
 Minimize.Text = "—"
 Minimize.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -103,20 +104,6 @@ Minimize.Parent = Main
 local MinCorner = Instance.new("UICorner")
 MinCorner.CornerRadius = UDim.new(0, 5)
 MinCorner.Parent = Minimize
-
-local Close = Instance.new("TextButton")
-Close.Size = UDim2.new(0, 27, 0, 22)
-Close.Position = UDim2.new(1, -31, 0, 4)
-Close.BackgroundColor3 = Color3.fromRGB(190, 60, 60)
-Close.Text = "X"
-Close.TextColor3 = Color3.fromRGB(255, 255, 255)
-Close.Font = Enum.Font.GothamBold
-Close.TextSize = 11
-Close.Parent = Main
-
-local CloseCorner = Instance.new("UICorner")
-CloseCorner.CornerRadius = UDim.new(0, 5)
-CloseCorner.Parent = Close
 
 local Scroll = Instance.new("ScrollingFrame")
 Scroll.Size = UDim2.new(1, -12, 1, -38)
@@ -661,16 +648,16 @@ end)
 RefreshSeedButtons()
 
 local Trigger = Instance.new("TextButton")
-Trigger.Size = UDim2.new(0, 42, 0, 42)
+Trigger.Size = UDim2.new(0, 54, 0, 42)
 Trigger.Position = UDim2.new(0, 20, 0.5, -21)
 Trigger.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-Trigger.Text = "G"
+Trigger.Text = "GAG"
 Trigger.TextColor3 = Color3.fromRGB(255, 255, 255)
 Trigger.Font = Enum.Font.GothamBold
 Trigger.TextSize = 16
 Trigger.Visible = false
 Trigger.Active = true
-Trigger.Draggable = true
+Trigger.Draggable = false
 Trigger.Parent = ScreenGui
 
 local TriggerCorner = Instance.new("UICorner")
@@ -1232,22 +1219,146 @@ Minimize.MouseButton1Click:Connect(function()
     Trigger.Visible = true
 end)
 
-Trigger.MouseButton1Click:Connect(function()
-    Minimized = false
-    Main.Visible = true
-    Trigger.Visible = false
+-- Bubble Hide Gui pada trigger (tekan lama 0.5 detik)
+local BubbleFrame = nil
+
+local function HideBubble()
+    if BubbleFrame and BubbleFrame.Parent then
+        BubbleFrame.Visible = false
+    end
+end
+
+local function ShowBubble()
+    if not BubbleFrame then
+        BubbleFrame = Instance.new("Frame")
+        BubbleFrame.Name = "TriggerBubble"
+        BubbleFrame.Size = UDim2.new(0, 130, 0, 44)
+        BubbleFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 38)
+        BubbleFrame.BackgroundTransparency = 0.05
+        BubbleFrame.BorderSizePixel = 0
+        BubbleFrame.ZIndex = 1000001
+        BubbleFrame.Visible = false
+        BubbleFrame.Parent = ScreenGui
+
+        local BubbleCorner = Instance.new("UICorner")
+        BubbleCorner.CornerRadius = UDim.new(0, 8)
+        BubbleCorner.Parent = BubbleFrame
+
+        local BubbleStroke = Instance.new("UIStroke")
+        BubbleStroke.Thickness = 1.5
+        BubbleStroke.Color = Color3.fromRGB(120, 120, 120)
+        BubbleStroke.Parent = BubbleFrame
+
+        local HideGuiButton = Instance.new("TextButton")
+        HideGuiButton.Name = "HideGuiButton"
+        HideGuiButton.Size = UDim2.new(1, -12, 1, -12)
+        HideGuiButton.Position = UDim2.fromOffset(6, 6)
+        HideGuiButton.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+        HideGuiButton.BorderSizePixel = 0
+        HideGuiButton.Text = "Hide Gui"
+        HideGuiButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        HideGuiButton.TextSize = 13
+        HideGuiButton.Font = Enum.Font.GothamBold
+        HideGuiButton.ZIndex = 1000002
+        HideGuiButton.Parent = BubbleFrame
+
+        local HideCorner = Instance.new("UICorner")
+        HideCorner.CornerRadius = UDim.new(0, 6)
+        HideCorner.Parent = HideGuiButton
+
+        HideGuiButton.Activated:Connect(function()
+            HideBubble()
+            HideGuiButton.BackgroundColor3 = Color3.fromRGB(120, 30, 30)
+            HideGuiButton.Size = UDim2.new(1, -16, 1, -16)
+            HideGuiButton.Position = UDim2.fromOffset(8, 8)
+            task.delay(0.2, function()
+                Main.Visible = false
+                Trigger.Visible = false
+                ScreenGui.Enabled = false
+            end)
+        end)
+    end
+
+    local TriggerPosition = Trigger.Position
+    BubbleFrame.Position = UDim2.new(
+        TriggerPosition.X.Scale, TriggerPosition.X.Offset,
+        TriggerPosition.Y.Scale, TriggerPosition.Y.Offset - 50
+    )
+    BubbleFrame.Visible = true
+end
+
+local TriggerPressing = false
+local TriggerDragging = false
+local TriggerLongPressFired = false
+local TriggerDragStart = Vector2.new(0, 0)
+local TriggerStartPos = UDim2.new(0, 0, 0, 0)
+local LongPressThread = nil
+
+Trigger.InputBegan:Connect(function(Input)
+    if Input.UserInputType == Enum.UserInputType.MouseButton1
+        or Input.UserInputType == Enum.UserInputType.Touch then
+        TriggerPressing = true
+        TriggerDragging = false
+        TriggerLongPressFired = false
+        TriggerDragStart = Input.Position
+        TriggerStartPos = Trigger.Position
+        HideBubble()
+        LongPressThread = task.delay(0.5, function()
+            if TriggerPressing and not TriggerDragging then
+                TriggerLongPressFired = true
+                ShowBubble()
+            end
+        end)
+    end
 end)
 
-Close.MouseButton1Click:Connect(function()
-    WaterLoopEnabled = false
-    WaterLoopToken += 1
-    SellLoopEnabled = false
-    SellLoopToken += 1
-    SeedLoopEnabled = false
-    SeedLoopToken += 1
-    DeleteLoopEnabled = false
-    DeleteLoopToken += 1
-    HarvestLoopEnabled = false
-    HarvestLoopToken += 1
-    ScreenGui:Destroy()
+Trigger.InputChanged:Connect(function(Input)
+    if (Input.UserInputType == Enum.UserInputType.MouseMovement
+        or Input.UserInputType == Enum.UserInputType.Touch) and TriggerPressing then
+        local Delta = Input.Position - TriggerDragStart
+        local MoveDistance = math.sqrt(Delta.X ^ 2 + Delta.Y ^ 2)
+        if MoveDistance > 5 then
+            TriggerDragging = true
+            HideBubble()
+            if LongPressThread then
+                task.cancel(LongPressThread)
+                LongPressThread = nil
+            end
+            Trigger.Position = UDim2.new(
+                TriggerStartPos.X.Scale,
+                TriggerStartPos.X.Offset + Delta.X,
+                TriggerStartPos.Y.Scale,
+                TriggerStartPos.Y.Offset + Delta.Y
+            )
+        end
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(Input)
+    if Input.UserInputType == Enum.UserInputType.MouseButton1
+        or Input.UserInputType == Enum.UserInputType.Touch then
+        if TriggerPressing then
+            if LongPressThread then
+                task.cancel(LongPressThread)
+                LongPressThread = nil
+            end
+            if not TriggerDragging and not TriggerLongPressFired then
+                Minimized = false
+                Main.Visible = true
+                Trigger.Visible = false
+                HideBubble()
+            end
+            TriggerPressing = false
+        end
+    end
+end)
+
+UserInputService.InputBegan:Connect(function(Input, GameProcessed)
+    if GameProcessed then return end
+    if Input.UserInputType == Enum.UserInputType.MouseButton1
+        or Input.UserInputType == Enum.UserInputType.Touch then
+        if BubbleFrame and BubbleFrame.Visible and not TriggerPressing then
+            HideBubble()
+        end
+    end
 end)
