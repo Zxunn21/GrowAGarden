@@ -92,6 +92,107 @@ local function GetTrowel()
     return nil
 end
 
+-- Cari Trowel berdasarkan nama dinamis (contoh: "Trowel [328670x Uses]")
+-- lalu equip Tool tersebut sebelum fitur PINDAH TANAMAN menjalankan remote.
+local function FindAndEquipTrowel(Character)
+    Character = Character or Player.Character
+    if not Character then
+        return nil, "Character tidak ditemukan"
+    end
+
+    local Humanoid = Character:FindFirstChildOfClass("Humanoid")
+    if not Humanoid then
+        return nil, "Humanoid tidak ditemukan"
+    end
+
+    -- Jika Trowel sudah sedang dipegang, langsung gunakan Instance itu.
+    for _, Object in ipairs(Character:GetChildren()) do
+        if Object:IsA("Tool") and string.find(string.lower(Object.Name), "trowel", 1, true) then
+            return Object
+        end
+    end
+
+    -- Nama Trowel mengandung jumlah Uses, jadi jangan FindFirstChild("Trowel").
+    local Trowel = nil
+    for _, Object in ipairs(Player.Backpack:GetChildren()) do
+        if Object:IsA("Tool") and string.find(string.lower(Object.Name), "trowel", 1, true) then
+            Trowel = Object
+            break
+        end
+    end
+
+    if not Trowel then
+        return nil, "Trowel tidak ditemukan!"
+    end
+
+    local Equipped = pcall(function()
+        Humanoid:EquipTool(Trowel)
+    end)
+
+    if not Equipped then
+        return nil, "Gagal equip Trowel"
+    end
+
+    -- Beri waktu singkat agar parent Tool berpindah Backpack -> Character.
+    local Deadline = os.clock() + 1
+    while Trowel.Parent ~= Character and os.clock() < Deadline do
+        task.wait(0.03)
+    end
+
+    if Trowel.Parent ~= Character then
+        return nil, "Trowel gagal terpasang"
+    end
+
+    return Trowel
+end
+
+-- Cari dan equip Shovel khusus untuk fitur HAPUS SPRINKLER.
+-- Nama yang dicari: "Shovel [Destroy Plants]".
+local function FindAndEquipDestroyShovel(Character)
+    Character = Character or Player.Character
+    if not Character then
+        return nil, "Character tidak ditemukan"
+    end
+
+    local Humanoid = Character:FindFirstChildOfClass("Humanoid")
+    if not Humanoid then
+        return nil, "Humanoid tidak ditemukan"
+    end
+
+    local TargetName = "Shovel [Destroy Plants]"
+
+    -- Jika sudah dipegang, langsung gunakan.
+    for _, Object in ipairs(Character:GetChildren()) do
+        if Object:IsA("Tool") and Object.Name == TargetName then
+            return Object
+        end
+    end
+
+    local Shovel = Player.Backpack:FindFirstChild(TargetName)
+    if not Shovel or not Shovel:IsA("Tool") then
+        return nil, TargetName .. " tidak ditemukan!"
+    end
+
+    local Equipped = pcall(function()
+        Humanoid:EquipTool(Shovel)
+    end)
+
+    if not Equipped then
+        return nil, "Gagal equip " .. TargetName
+    end
+
+    local Deadline = os.clock() + 1
+    while Shovel.Parent ~= Character and os.clock() < Deadline do
+        task.wait(0.03)
+    end
+
+    if Shovel.Parent ~= Character then
+        return nil, TargetName .. " gagal terpasang"
+    end
+
+    return Shovel
+end
+
 local function DisablePlantCollision(Plant)
     if not Plant then
         return
@@ -919,6 +1020,18 @@ Move.MouseButton1Click:Connect(function()
         return
     end
 
+    -- Sebelum memindahkan tanaman, cari dan equip Trowel terlebih dahulu.
+    Status.Text = "Mencari Trowel..."
+    local Trowel, TrowelError = FindAndEquipTrowel(Character)
+
+    if not Trowel then
+        Status.Text = TrowelError or "Trowel tidak ditemukan!"
+        return
+    end
+
+    Status.Text = "Trowel siap"
+    task.wait(0.05)
+
     StartWaterLoop()
 
     Moving = true
@@ -940,11 +1053,14 @@ Move.MouseButton1Click:Connect(function()
         if Target and Target.Parent then
             DisablePlantCollision(Target)
 
-            local Trowel = GetTrowel()
-
-            if not Trowel then
-                Status.Text = "Trowel tidak ditemukan!"
-                break
+            -- Gunakan Trowel yang sudah ditemukan dan di-equip saat tombol MOVE ditekan.
+            -- Jika Tool terlepas di tengah proses, coba equip ulang.
+            if not Trowel or not Trowel.Parent then
+                Trowel, TrowelError = FindAndEquipTrowel(Character)
+                if not Trowel then
+                    Status.Text = TrowelError or "Trowel tidak ditemukan!"
+                    break
+                end
             end
 
             Status.Text = "Moving " .. Number .. "/" .. #Results
@@ -1144,6 +1260,20 @@ DeleteButton.MouseButton1Click:Connect(function()
     DeleteLoopToken += 1
 
     if DeleteLoopEnabled then
+        -- Sebelum menghapus sprinkler, cari dan equip Shovel [Destroy Plants].
+        DeleteStatus.Text = "Mencari Shovel..."
+        local Character = Player.Character or Player.CharacterAdded:Wait()
+        local Shovel, ShovelError = FindAndEquipDestroyShovel(Character)
+
+        if not Shovel then
+            DeleteLoopEnabled = false
+            DeleteButton.Text = "OFF"
+            DeleteButton.BackgroundColor3 = Color3.fromRGB(190, 70, 70)
+            DeleteStatus.Text = ShovelError or "Shovel tidak ditemukan!"
+            return
+        end
+
+        DeleteStatus.Text = "Shovel siap"
         StartDeleteLoop(DeleteLoopToken)
     else
         DeleteButton.Text = "OFF"
@@ -1155,73 +1285,233 @@ end)
 local HarvestLoopEnabled = false
 local HarvestLoopToken = 0
 
-local function HarvestOnce()
-    local FruitContainers = 0
-    local Targets = {}
-    local OwnPlants = GetOwnPlants()
+-- Event-driven harvest: hindari scan seluruh hierarchy setiap 0.2 detik.
+-- Prompt yang sudah ditemukan hanya dipantau perubahan Enabled-nya.
+local HarvestConnections = {}
+local HarvestPromptConnections = {}
+local HarvestRegisteredPrompts = setmetatable({}, {__mode = "k"})
+local HarvestSentTargets = setmetatable({}, {__mode = "k"})
+local HarvestFruitContainers = setmetatable({}, {__mode = "k"})
+local HarvestReadyCount = 0
+local HarvestSentCount = 0
 
-    if not OwnPlants then
-        HarvestStatus.Text = "Farm sendiri belum ditemukan"
-        return 0
-    end
-
-    for _, Plant in ipairs(OwnPlants:GetChildren()) do
-        local Fruits = Plant:FindFirstChild("Fruits")
-
-        if Fruits then
-            FruitContainers += 1
-
-            for _, Object in ipairs(Fruits:GetDescendants()) do
-                if Object:IsA("Model") then
-                    Targets[#Targets + 1] = Object
-                end
-            end
-        end
-    end
-
-    if #Targets == 0 then
-        HarvestStatus.Text = tostring(FruitContainers) .. " Fruits | 0 buah"
-        return 0
-    end
-
-    local Sent = 0
-
-    for _, Target in ipairs(Targets) do
-        if not HarvestLoopEnabled then
-            break
-        end
-
-        local Success = pcall(function()
-            CollectEvent:FireServer({Target})
+local function DisconnectHarvestConnections()
+    for _, Connection in ipairs(HarvestConnections) do
+        pcall(function()
+            Connection:Disconnect()
         end)
-
-        if Success then
-            Sent += 1
-        end
-
-        task.wait(0.01)
     end
 
-    HarvestStatus.Text = tostring(#Targets) .. " buah | " .. tostring(Sent) .. " sent"
-    return Sent
+    for Prompt, Connection in pairs(HarvestPromptConnections) do
+        pcall(function()
+            Connection:Disconnect()
+        end)
+        HarvestPromptConnections[Prompt] = nil
+    end
+
+    table.clear(HarvestConnections)
+    table.clear(HarvestRegisteredPrompts)
+    table.clear(HarvestSentTargets)
+    table.clear(HarvestFruitContainers)
+    HarvestReadyCount = 0
+    HarvestSentCount = 0
 end
 
-local function StartHarvestLoop(Token)
-    HarvestButton.Text = "ON"
-    HarvestButton.BackgroundColor3 = Color3.fromRGB(70, 170, 90)
-    HarvestStatus.Text = "Memindai buah..."
+local function UpdateHarvestStatus()
+    if not HarvestLoopEnabled then
+        return
+    end
 
-    task.spawn(function()
-        while HarvestLoopEnabled and HarvestLoopToken == Token and ScreenGui.Parent do
-            HarvestOnce()
+    local Containers = 0
+    for Container in pairs(HarvestFruitContainers) do
+        if Container.Parent then
+            Containers += 1
+        else
+            HarvestFruitContainers[Container] = nil
+        end
+    end
 
-            local Waited = 0
-            while Waited < 0.2 and HarvestLoopEnabled and HarvestLoopToken == Token do
-                task.wait(0.05)
-                Waited += 0.05
+    HarvestStatus.Text = tostring(Containers) .. " Fruits | " .. tostring(HarvestReadyCount) .. " ready | " .. tostring(HarvestSentCount) .. " sent"
+end
+
+-- Dari ProximityPrompt, naik ke atas sampai menemukan Model buah yang
+-- merupakan descendant langsung/tidak langsung dari sebuah object bernama Fruits.
+-- Model pertama di bawah Fruits dipakai sebagai target Collect, sesuai pola v11.
+local function FindHarvestTargetFromPrompt(Prompt)
+    local Current = Prompt.Parent
+    local CandidateModel = nil
+
+    while Current do
+        if Current:IsA("Model") then
+            CandidateModel = Current
+        end
+
+        local Parent = Current.Parent
+        if Parent and Parent.Name == "Fruits" then
+            -- Current adalah object teratas di dalam Fruits. Jika ia Model,
+            -- gunakan Current; kalau bukan, gunakan Model terdekat yang ditemukan.
+            if Current:IsA("Model") then
+                return Current, Parent
+            end
+            return CandidateModel, Parent
+        end
+
+        Current = Parent
+    end
+
+    return nil, nil
+end
+
+local function TryHarvestPrompt(Prompt, Token)
+    if not HarvestLoopEnabled or HarvestLoopToken ~= Token then
+        return
+    end
+
+    if not Prompt.Parent or not Prompt.Enabled then
+        return
+    end
+
+    local Target = FindHarvestTargetFromPrompt(Prompt)
+    if not Target or not Target.Parent then
+        return
+    end
+
+    -- Debounce per model buah. Satu buah tidak akan ditembak berkali-kali
+    -- hanya karena prompt tetap Enabled selama beberapa frame.
+    if HarvestSentTargets[Target] then
+        return
+    end
+
+    HarvestSentTargets[Target] = true
+    HarvestReadyCount += 1
+
+    local Success = pcall(function()
+        CollectEvent:FireServer({Target})
+    end)
+
+    if Success then
+        HarvestSentCount += 1
+    else
+        -- Jika panggilan gagal secara lokal, izinkan percobaan lagi saat state berubah.
+        HarvestSentTargets[Target] = nil
+    end
+
+    UpdateHarvestStatus()
+end
+
+local function RegisterHarvestPrompt(Prompt, Token)
+    if not Prompt:IsA("ProximityPrompt") or HarvestRegisteredPrompts[Prompt] then
+        return
+    end
+
+    local Target, Fruits = FindHarvestTargetFromPrompt(Prompt)
+    if not Target or not Fruits then
+        return
+    end
+
+    HarvestRegisteredPrompts[Prompt] = true
+    HarvestFruitContainers[Fruits] = true
+
+    local Connection = Prompt:GetPropertyChangedSignal("Enabled"):Connect(function()
+        if not HarvestLoopEnabled or HarvestLoopToken ~= Token then
+            return
+        end
+
+        if Prompt.Enabled then
+            TryHarvestPrompt(Prompt, Token)
+        else
+            -- Bila game memakai ulang Model yang sama dan prompt kembali disabled,
+            -- reset debounce agar buah tersebut boleh dipanen saat Enabled lagi.
+            local CurrentTarget = FindHarvestTargetFromPrompt(Prompt)
+            if CurrentTarget then
+                HarvestSentTargets[CurrentTarget] = nil
             end
         end
     end)
+
+    HarvestPromptConnections[Prompt] = Connection
+
+    -- Buah mungkin sudah matang ketika AUTO HARVEST baru dinyalakan.
+    if Prompt.Enabled then
+        task.defer(TryHarvestPrompt, Prompt, Token)
+    end
+end
+
+local function RegisterHarvestDescendant(Object, Token)
+    if Object:IsA("ProximityPrompt") then
+        RegisterHarvestPrompt(Object, Token)
+    end
+end
+
+local function StartHarvestWatcher(Token)
+    HarvestButton.Text = "ON"
+    HarvestButton.BackgroundColor3 = Color3.fromRGB(70, 170, 90)
+    HarvestStatus.Text = "Menyiapkan watcher..."
+
+    DisconnectHarvestConnections()
+
+    local OwnPlants = GetOwnPlants()
+    if not OwnPlants then
+        HarvestLoopEnabled = false
+        HarvestButton.Text = "OFF"
+        HarvestButton.BackgroundColor3 = Color3.fromRGB(190, 70, 70)
+        HarvestStatus.Text = "Farm sendiri belum ditemukan"
+        return
+    end
+
+    -- Satu initial scan saja untuk prompt yang sudah ada.
+    -- Tidak lagi mengulang GetDescendants seluruh farm setiap 0.2 detik.
+    for _, Plant in ipairs(OwnPlants:GetChildren()) do
+        local Fruits = Plant:FindFirstChild("Fruits")
+        if Fruits then
+            HarvestFruitContainers[Fruits] = true
+
+            for _, Object in ipairs(Fruits:GetDescendants()) do
+                if Object:IsA("ProximityPrompt") then
+                    RegisterHarvestPrompt(Object, Token)
+                end
+            end
+
+            -- Setelah initial scan, hanya proses descendant BARU.
+            HarvestConnections[#HarvestConnections + 1] = Fruits.DescendantAdded:Connect(function(Object)
+                RegisterHarvestDescendant(Object, Token)
+            end)
+        end
+    end
+
+    -- Tanaman/Fruits baru yang muncul setelah fitur aktif juga dipantau.
+    HarvestConnections[#HarvestConnections + 1] = OwnPlants.ChildAdded:Connect(function(Plant)
+        if not HarvestLoopEnabled or HarvestLoopToken ~= Token then
+            return
+        end
+
+        task.defer(function()
+            if not HarvestLoopEnabled or HarvestLoopToken ~= Token or not Plant.Parent then
+                return
+            end
+
+            local Fruits = Plant:FindFirstChild("Fruits") or Plant:WaitForChild("Fruits", 2)
+            if not Fruits then
+                return
+            end
+
+            HarvestFruitContainers[Fruits] = true
+
+            for _, Object in ipairs(Fruits:GetDescendants()) do
+                if Object:IsA("ProximityPrompt") then
+                    RegisterHarvestPrompt(Object, Token)
+                end
+            end
+
+            HarvestConnections[#HarvestConnections + 1] = Fruits.DescendantAdded:Connect(function(Object)
+                RegisterHarvestDescendant(Object, Token)
+            end)
+
+            UpdateHarvestStatus()
+        end)
+    end)
+
+    UpdateHarvestStatus()
 end
 
 HarvestButton.MouseButton1Click:Connect(function()
@@ -1229,8 +1519,9 @@ HarvestButton.MouseButton1Click:Connect(function()
     HarvestLoopToken += 1
 
     if HarvestLoopEnabled then
-        StartHarvestLoop(HarvestLoopToken)
+        StartHarvestWatcher(HarvestLoopToken)
     else
+        DisconnectHarvestConnections()
         HarvestButton.Text = "OFF"
         HarvestButton.BackgroundColor3 = Color3.fromRGB(190, 70, 70)
         HarvestStatus.Text = "OFF"
