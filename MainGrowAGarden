@@ -1391,8 +1391,30 @@ local function TryHarvestPrompt(Prompt, Token)
 
     if Success then
         HarvestSentCount += 1
+
+        -- Jangan bergantung sepenuhnya pada perubahan Prompt.Enabled untuk
+        -- membuka debounce. Pada beberapa buah, game dapat memakai ulang Model/
+        -- Prompt yang sama atau tidak menghasilkan transisi Enabled yang teramati.
+        -- Akibatnya versi sebelumnya berhenti setelah panen pertama sampai toggle
+        -- AUTO HARVEST di-OFF/ON (karena toggle membersihkan HarvestSentTargets).
+        --
+        -- Rearm setelah jeda pendek. Retry tetap hanya dilakukan bila prompt masih
+        -- ada DAN Enabled, jadi buah yang belum siap tidak akan dikirim ke server.
+        task.delay(0.75, function()
+            if HarvestSentTargets[Target] then
+                HarvestSentTargets[Target] = nil
+            end
+
+            if not HarvestLoopEnabled or HarvestLoopToken ~= Token then
+                return
+            end
+
+            if Prompt.Parent and Prompt.Enabled and Target.Parent then
+                TryHarvestPrompt(Prompt, Token)
+            end
+        end)
     else
-        -- Jika panggilan gagal secara lokal, izinkan percobaan lagi saat state berubah.
+        -- Jika panggilan gagal secara lokal, izinkan percobaan lagi.
         HarvestSentTargets[Target] = nil
     end
 
